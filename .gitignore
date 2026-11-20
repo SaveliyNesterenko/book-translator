@@ -1,0 +1,37 @@
+# Python
+/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local library and application state
+/projects/
+/output/
+/sources/
+/backups/
+/.application.lock
+/.translation-worker.lock
+/.ui-preferences.json
+/.ui-preferences.json.tmp
+/.ui-preferences.lock
+*.log
+/*.db
+/*.db-journal
+/*.db-shm
+/*.db-wal
+
+# Machine-specific files
+.env
+.env.*
+!.env.example
+Thumbs.db
+
+# Local audits and design drafts
+/audit/*
+!/audit/ui_test_server.py
+/AUDIT_AND_ROADMAP.md
+/docs/DEVELOPMENT_PLAN.md
+/docs/FOUNDATION_PLAN.md
+/docs/PROJECT_REVIEW_2026-11-14.md
+/docs/mockups/
+/docs/quickstart/.captures/

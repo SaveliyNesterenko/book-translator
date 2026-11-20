@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Translator</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand"><span class="brand-mark" aria-hidden="true"><span></span></span>Book Translator</span>
+    <div class="topbar-actions">
+      <button id="toggle-library" class="secondary-button compact-button" type="button" aria-controls="library" aria-expanded="false">Книги</button>
+      <button id="model-state" class="model-state" type="button" title="Проверить подключение к LM Studio">
+        <span class="state-dot" aria-hidden="true"></span>
+        <span id="model-label">Проверяем LM Studio…</span>
+      </button>
+    </div>
+  </header>
+  <div id="connection" class="connection" role="status" hidden></div>
+
+  <div class="workspace">
+    <aside id="library" class="sidebar" aria-label="Библиотека">
+      <div class="sidebar-head">
+        <button id="add-project" class="primary-button" type="button">Добавить книгу</button>
+        <label class="field-label" for="library-search">Мои книги</label>
+        <input id="library-search" class="text-input" placeholder="Найти книгу" type="search">
+      </div>
+      <nav id="project-list" class="project-list" aria-label="Книги"></nav>
+      <div class="sidebar-foot">
+        <div id="library-errors" role="status"></div>
+        <details class="library-tools">
+          <summary>Библиотека</summary>
+          <label class="check-label"><input id="show-archive" type="checkbox"> Показать архив</label>
+          <label for="restore-file">Восстановить копию</label>
+          <input id="restore-file" type="file" accept=".zip">
+        </details>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section id="welcome">
+        <h1>Перевод книг</h1>
+        <p>Добавьте книгу в TXT, чтобы перевести её с английского на русский.</p>
+        <button id="welcome-add" class="primary-button" type="button">Выбрать TXT</button>
+      </section>
+
+      <section id="project-view" hidden>
+        <header class="book-heading">
+          <div class="heading-copy">
+            <h1 id="project-title"></h1>
+            <p class="book-language">Английский → русский</p>
+          </div>
+          <div class="book-actions">
+            <button id="start-button" class="primary-button" type="button">Перевести книгу</button>
+            <button id="stop-button" class="primary-button" type="button" hidden>Приостановить</button>
+            <button id="save-output" class="secondary-button" type="button" hidden>Сохранить TXT</button>
+            <button id="return-to-reader" class="secondary-button" type="button" hidden>К тексту</button>
+            <details id="book-tools" class="book-tools">
+              <summary aria-label="Действия с книгой" title="Действия с книгой">⋯</summary>
+              <div class="tools-menu">
+                <button id="test-button" class="text-button" type="button">Пробный перевод</button>
+                <button data-page="history" class="text-button" type="button">История</button>
+                <button data-page="export" class="text-button" type="button">Экспорт и варианты TXT</button>
+                <button data-page="settings" class="text-button" type="button">Свойства и копии</button>
+                <button id="manual-markup-button" class="text-button" type="button" hidden>Продолжить разметку</button>
+                <a id="quick-download" class="text-button" hidden download>Скачать TXT</a>
+              </div>
+            </details>
+          </div>
+        </header>
+
+        <div id="project-notice" class="project-notice" hidden>
+          <p id="action-hint" class="hint" role="status" hidden></p>
+          <button id="other-project" class="text-button" type="button" hidden>К книге, которая переводится</button>
+        </div>
+
+        <section id="page-text" class="page reader-page" data-layout="fragments">
+          <article id="reading-area" class="reading-area" data-mode="translation" aria-label="Текст книги">
+            <div class="reader-toolbar">
+              <div class="reader-context">
+                <div class="reader-switch" role="group" aria-label="Вид текста">
+                  <button id="view-translation" type="button" aria-pressed="true">Перевод</button>
+                  <button id="view-source" type="button" aria-pressed="false">Оригинал</button>
+                </div>
+                <span id="chunk-label"></span>
+              </div>
+              <div class="reader-options">
+                <button id="toggle-fragments" class="secondary-button compact-button" type="button" aria-controls="fragments-panel" aria-expanded="false">Фрагменты</button>
+                <label class="link-scroll" title="Связать прокрутку оригинала и перевода">
+                  <input id="sync-scroll" type="checkbox" checked> <span>Связать прокрутку</span>
+                </label>
+                <button id="compare-mode" class="secondary-button compact-button" type="button" aria-pressed="false"
+                        aria-controls="reader-panes" title="Показать оригинал и перевод рядом">Сверка</button>
+                <label class="font-control" for="font-size"><span>Шрифт</span>
+                  <select id="font-size" aria-label="Размер текста">
+                    <option value="16">16</option>
+                    <option value="18" selected>18</option>
+                    <option value="21">21</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div id="reader-panes" class="reader-panes">
+              <section class="reader-panel original-panel" aria-labelledby="source-heading">
+                <h2 id="source-heading" class="pane-heading">Оригинал</h2>
+                <pre id="source-text" class="reader-text" tabindex="0" lang="en"></pre>
+              </section>
+              <section class="reader-panel translated-panel" aria-labelledby="translation-heading">
+                <h2 id="translation-heading" class="pane-heading">Перевод</h2>
+                <label class="sr-only" for="translation-text">Текст перевода</label>
+                <textarea id="translation-text" class="reader-text" spellcheck="true" readonly
+                          placeholder="Здесь появится перевод выбранного фрагмента."></textarea>
+              </section>
+            </div>
+
+            <footer class="reader-footer">
+              <div class="edit-actions">
+                <button id="edit-text" class="text-button compact-button" type="button">Исправить</button>
+                <button id="save-text" class="primary-button compact-button" type="button" hidden>Сохранить</button>
+                <button id="cancel-text" class="text-button compact-button" type="button" hidden>Отмена</button>
+                <button id="fragment-details" data-page="fragment" class="text-button compact-button" type="button">Детали</button>
+              </div>
+              <span id="save-state" role="status"></span>
+              <div class="fragment-nav" aria-label="Навигация по книге">
+                <button id="previous" class="secondary-button compact-button" type="button" aria-label="Предыдущий фрагмент">Назад</button>
+                <span id="fragment-position"></span>
+                <button id="next" class="secondary-button compact-button" type="button" aria-label="Следующий фрагмент">Далее</button>
+              </div>
+            </footer>
+          </article>
+
+          <aside id="fragments-panel" class="fragment-rail" aria-labelledby="fragments-heading">
+            <div class="fragment-rail-head">
+              <h2 id="fragments-heading">Фрагменты</h2>
+              <div class="fragment-filter">
+                <label class="sr-only" for="chunk-search">Поиск по книге</label>
+                <input id="chunk-search" type="search" class="text-input" placeholder="Найти текст или раздел">
+                <select id="chunk-filter" aria-label="Фильтр фрагментов">
+                  <option value="all" selected>Все фрагменты</option>
+                  <option value="ready">Переведённые</option>
+                  <option value="pending">Ожидают</option>
+                  <option value="failed">Ошибки</option>
+                  <option value="warnings">С предупреждениями</option>
+                  <option value="unreviewed">Не проверены</option>
+                  <option value="reviewed">Принятые</option>
+                  <option value="excluded">Исключённые</option>
+                </select>
+              </div>
+            </div>
+            <nav id="chunk-list" aria-label="Фрагменты"></nav>
+            <footer class="fragment-rail-foot">
+              <div class="selection-toolbar">
+                <strong id="selection-count" hidden></strong>
+                <button id="select-pending" class="text-button compact-button" type="button">Выбрать ожидающие</button>
+                <button id="clear-selection" class="text-button compact-button" type="button" hidden>Снять выбор</button>
+              </div>
+              <button id="start-current" class="secondary-button" type="button" disabled>Перевести фрагмент</button>
+              <button id="start-selected" class="primary-button" type="button" hidden>Перевести выбранные</button>
+            </footer>
+          </aside>
+        </section>
+
+        <section id="page-fragment" class="page panel" hidden>
+          <h2>Проверка и правки фрагмента</h2>
+          <div class="inline-actions">
+            <span id="review-badge" class="muted"></span>
+            <button id="review-text" class="secondary-button" type="button">Принять после вычитки</button>
+            <button id="retranslate" class="secondary-button" type="button">Новая машинная версия</button>
+          </div>
+          <div id="warnings" class="warnings"></div>
+          <details class="disclosure">
+            <summary>Заметка</summary>
+            <label class="sr-only" for="chunk-note">Заметка к фрагменту</label>
+            <textarea id="chunk-note" class="text-input" maxlength="4000" rows="3"></textarea>
+            <button id="save-note" class="secondary-button" type="button">Сохранить заметку</button>
+          </details>
+          <details class="disclosure">
+            <summary>Версии и попытки перевода</summary>
+            <label for="version-select">Сохранённая версия</label>
+            <select id="version-select"></select>
+            <pre id="version-preview" class="version-preview"></pre>
+            <button id="restore-version" class="secondary-button" type="button">Вернуть выбранную версию</button>
+            <div id="attempt-history"></div>
+          </details>
+          <details class="disclosure">
+            <summary>Раздел и состав книги</summary>
+            <label class="field-label" for="section-name">Название раздела</label>
+            <input id="section-name" class="text-input">
+            <label class="check-label"><input id="exclude-chunk" type="checkbox"> Исключить фрагмент из перевода и экспорта</label>
+            <button id="save-structure" class="secondary-button" type="button">Сохранить структуру</button>
+          </details>
+        </section>
+
+        <section id="page-history" class="page panel" hidden>
+          <h2>Сеансы перевода</h2>
+          <p id="run-timer" class="muted"></p>
+          <div id="run-history"></div>
+          <h2>Журнал действий</h2>
+          <div id="event-history"></div>
+        </section>
+
+        <section id="page-export" class="page panel" hidden>
+          <h2>Сохранить TXT</h2>
+          <p id="export-summary" class="muted"></p>
+          <label class="field-label" for="export-kind">Вид результата</label>
+          <select id="export-kind">
+            <option value="draft">Машинный перевод</option>
+            <option value="reviewed">Перевод после вычитки</option>
+            <option value="prefix">Непрерывное готовое начало</option>
+          </select>
+          <label class="field-label" for="run-range">Номера фрагментов (по желанию)</label>
+          <input id="run-range" class="text-input short-input" placeholder="Например, 12–15, 20">
+          <div class="inline-actions panel-actions">
+            <button id="make-export" class="primary-button" type="button">Собрать TXT</button>
+            <a id="export-download" class="button-link" hidden download>Сохранить файл</a>
+            <button id="open-folder" class="text-button" type="button">Открыть папку с переводами</button>
+          </div>
+          <div id="export-history"></div>
+        </section>
+
+        <section id="page-settings" class="page panel" hidden>
+          <h2>Свойства книги</h2>
+          <label class="field-label" for="book-title">Название</label>
+          <input id="book-title" class="text-input short-input" maxlength="160">
+          <div class="inline-actions panel-actions">
+            <button id="rename-book" class="secondary-button" type="button">Сохранить название</button>
+            <button id="archive-book" class="secondary-button" type="button">В архив</button>
+            <button id="backup-book" class="secondary-button" type="button">Создать резервную копию</button>
+            <a id="backup-download" class="button-link" hidden download>Сохранить копию</a>
+          </div>
+          <h2>Подключение</h2>
+          <p id="profile-summary" class="muted"></p>
+          <details class="disclosure">
+            <summary>Подготовка и параметры перевода</summary>
+            <pre id="profile-json"></pre>
+            <p id="preparation-notes" class="muted"></p>
+          </details>
+          <details class="disclosure">
+            <summary>Глоссарий для вычитки</summary>
+            <div class="term-form">
+              <input id="term-source" class="text-input" aria-label="Термин в оригинале" placeholder="Оригинал">
+              <input id="term-target" class="text-input" aria-label="Перевод термина" placeholder="Перевод">
+              <button id="add-term" class="secondary-button" type="button">Добавить</button>
+            </div>
+            <div id="term-list"></div>
+          </details>
+        </section>
+
+        <footer class="progress-panel" aria-label="Ход перевода книги">
+          <div class="progress-status">
+            <span id="project-status" class="project-status" aria-live="polite"></span>
+            <div id="progress-track" class="progress-track" role="progressbar" aria-label="Ход перевода"
+                 aria-valuemin="0" aria-valuemax="100">
+              <div id="progress-fill" class="progress-fill"></div>
+            </div>
+            <span id="progress-value"></span>
+          </div>
+          <span id="last-saved"></span>
+        </footer>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="add-dialog" class="add-dialog" aria-labelledby="add-title">
+    <form id="add-form">
+      <div class="dialog-heading">
+        <h2 id="add-title">Добавить книгу</h2>
+        <button id="close-dialog" class="close-button" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <label class="field-label" for="book-file">Книга в TXT</label>
+      <input id="book-file" type="file" accept=".txt" required>
+      <label class="field-label" for="display-name">Название</label>
+      <input id="display-name" class="text-input" maxlength="160">
+      <details class="disclosure">
+        <summary>Подготовка файла</summary>
+        <label class="field-label" for="encoding">Кодировка</label>
+        <select id="encoding">
+          <option value="utf-8-sig">UTF-8</option>
+          <option value="cp1252">Windows-1252 (западноевропейская)</option>
+          <option value="cp1251">Windows-1251 (кириллица)</option>
+        </select>
+        <label class="check-label"><input id="strip-wrapper" type="checkbox" checked> Удалить служебную обёртку Project Gutenberg</label>
+        <fieldset class="mode-choice">
+          <legend>Разделение на фрагменты</legend>
+          <label class="check-label"><input type="radio" name="segmentation-mode" value="auto" checked> Автоматически</label>
+          <label class="check-label"><input type="radio" name="segmentation-mode" value="manual"> Вручную</label>
+        </fieldset>
+        <button id="preview-book" class="secondary-button" type="button">Проверить подготовку</button>
+        <section id="import-preview" hidden>
+          <p id="import-summary"></p>
+          <div id="automatic-preview">
+            <div class="text-pair">
+              <section><h3>Исходник</h3><pre id="original-preview"></pre></section>
+              <section><h3>После подготовки</h3><pre id="prepared-preview"></pre></section>
+            </div>
+            <details class="disclosure"><summary>Текст, исключённый очисткой</summary><pre id="removed-preview"></pre></details>
+            <details class="disclosure"><summary>Разделы и состав</summary><div id="import-structure"></div></details>
+          </div>
+          <p id="manual-import-preview" class="muted" hidden>Ручная разметка откроется после добавления книги.</p>
+        </section>
+      </details>
+      <p id="form-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button id="cancel-dialog" class="secondary-button" type="button">Отмена</button>
+        <button id="create-button" class="primary-button" type="submit" disabled>Добавить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="manual-dialog" class="manual-dialog" aria-labelledby="manual-title">
+    <div class="manual-shell">
+      <header class="manual-header">
+        <div><h2 id="manual-title">Разметка книги</h2><p id="manual-summary" class="muted"></p></div>
+        <div class="manual-header-actions">
+          <button id="manual-undo" class="secondary-button" type="button">Отменить последнее разделение</button>
+          <button id="manual-close" class="close-button" type="button" aria-label="Закрыть">×</button>
+        </div>
+      </header>
+      <div class="manual-toolbar">
+        <label for="manual-search">Найти</label>
+        <input id="manual-search" class="text-input" type="search" placeholder="Текст или CHAPTER">
+        <button id="manual-find-next" class="secondary-button" type="button">Следующее</button>
+        <span id="manual-size" class="manual-size"></span>
+      </div>
+      <div id="manual-reader" class="manual-reader" tabindex="0" aria-label="Текст для ручной разметки"></div>
+      <footer class="manual-footer">
+        <p id="manual-message" class="muted"></p>
+        <div class="inline-actions">
+          <button id="manual-finish" class="secondary-button" type="button">Завершить разметку</button>
+          <button id="manual-done" class="primary-button" type="button">Вернуться к книге</button>
+        </div>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="decision-dialog" class="add-dialog" aria-labelledby="decision-title">
+    <div class="decision-content">
+      <h2 id="decision-title"></h2>
+      <p id="decision-message"></p>
+      <div class="dialog-actions">
+        <button id="decision-stay" class="text-button" type="button" hidden>Остаться</button>
+        <button id="decision-no" class="secondary-button" type="button">Отмена</button>
+        <button id="decision-yes" class="primary-button" type="button">Продолжить</button>
+      </div>
+    </div>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>
